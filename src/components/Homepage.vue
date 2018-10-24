@@ -3,42 +3,38 @@
     <nav class="navbar sticky-top navbar-light bg-light justify-content-between">
       <a class="navbar-brand">Github vue</a>
       <form>
-        <a type="button" class="btn btn-primary" data-toggle="modal" data-target="#projectModal">
-          Projet
-        </a>
-        <input type="text"/>
-        <a type="button" class="btn btn-primary" data-toggle="modal" data-target="#dateModal">
-          Période
-        </a>
-        <select class="js-example-basic-multiple" name="accounts[]" multiple="multiple" style="width:150px;">
-          <option v-for="account in accounts" :key="account.id" value="account.login">{{account.login}}</option>
-        </select>
-        <button type="button" class="btn btn-primary">Search</button>
+        <datepicker placeholder="Date début" v-model="dateBegin" :format="formatDate"></datepicker>
+        <datepicker placeholder="Date fin" v-model="dateEnd" :format="formatDate" ></datepicker>
+        <multiselect v-model="selectedRepos" 
+                      :options="repoItems" 
+                      :multiple="true" 
+                      :close-on-select="false"
+                      :clear-on-select="false" 
+                      :preserve-search="true"
+                      placeholder="Selectionner repertoire" 
+                      label="full_name" 
+                      track-by="full_name" 
+                      :preselect-first="true">   
+        <template slot="selection" slot-scope="{ values, search, isOpen }"><span class="multiselect__single"
+          v-if="values.length &amp;&amp; !isOpen">{{ values.length }} options selected</span>
+        </template>
+        </multiselect>
+        <button type="button" class="btn btn-primary" v-on:click="getCommitsForSelectedRepos()">Rechercher</button>
       </form>
     </nav>
 
     <div>
-      <!-- <datedate-picker i18n="EN" @selected="events">datepicker</date-picker> -->
-
-      <div class="container">
+      <div class="container" style="padding-top: 10px;">
         <h1 style="padding-top: 50px;">Liste des commits</h1>
-
-        <table class="table">
-  <thead>
-    <tr>
-      <th scope="col">Commit name</th>
-      <th scope="col">Login name</th>
-      <th scope="col">Date</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr v-for="commit in commits" :key="commit.commit.committer.date">
-      <td>{{commit.commit.message}}</td>
-      <td>{{commit.commit.committer.name}}</td>
-      <td>{{commit.commit.committer.date}}</td>
-    </tr>
-  </tbody>
-</table>
+        <div>
+            <div class="card" v-for="selectedRepo in selectedRepos">
+              <div class="card-body" style="padding-top: 10px;">
+                    <h5 class="card-title">{{selectedRepo.owner.login}}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{selectedRepo.name}}</h6>
+                    <p class="card-text" v-for="commit in commits">{{commit.commit.message}} - ({{formatDate(commit.commit.author.date)}})</p>
+                </div>
+            </div>
+          </div>
       </div>
 
     </div>
@@ -46,14 +42,36 @@
 </template>
 
 <script>
-const axios = require('axios');
+//imports
+import axios from 'axios';
+import Multiselect from 'vue-multiselect';
+import Datepicker from 'vuejs-datepicker';
+import moment from 'moment';
+import Vue2Filters from 'vue2-filters'
+
 export default {
   name: "Homepage",
-  props: {},
+  components: {
+    Multiselect,
+    Datepicker,
+    Vue2Filters,
+  },
+  props: {
+    token : `token d3db3b8367c18ddac1d3f72c31a80fc37d6c31de`,
+  },
   data() {
     return {
-      repositories: [],
-      accounts: [
+      repoItems: [],
+      selectedRepos: [],
+
+      dateBegin:'',
+      dateEnd:'',
+      dateCommit:'',
+
+      commits: [],
+
+      //localDatas
+      localAccounts: [
         {
           id: 0,
           login: 'alixnzt',
@@ -71,7 +89,7 @@ export default {
           login: 'gegeblc',
         },
       ],
-      repositories: [
+      localRepositories: [
         {
           id: 0,
           name: 'github-ynov-vue',
@@ -100,8 +118,7 @@ export default {
           }
         },
       ],
-
-      commits: [
+      localCommits: [
         {
           commit: {
             committer: {
@@ -195,30 +212,52 @@ export default {
       ],
     }
   },
-  beforeMount(){
-    this.getRepositoriesList();
+  created(){
+    this.getReposList();
   },
   methods: {
-    getRepositoriesList(){
+    getReposList(){
+      var vm = this;
       axios({
         method:'get',
         url:'https://api.github.com/search/repositories?q=github-ynov-vue',
         responseType:'stream',
-        headers: {'Authorization': `token d3db3b8367c18ddac1d3f72c31a80fc37d6c31de` }
+        headers: {'Authorization': vm.token }
       })
-        // .then(function (response) {
-        //   console.log(response.data.items);
-        // });
-        .then(response => {
-          console.log(response.data.items);
-          this.repositories.push(response.data.items);
-          console.log(this.repositories);
+        .then(function(response) {
+          response.data.items.map(function(value, key) {
+            vm.repoItems.push(value);
+          });
+          // console.log(vm.repoItems);
         })
-    }
+    },
+    formatDate(date) {
+        return moment(date).format('YYYY-MM-D à h:mm:ss');
+    },
+    getCommitsForSelectedRepos(){
+      var vm = this;
+
+      vm.selectedRepos.forEach((repo) => {
+        vm.commits = []
+        axios({
+          method:'get',
+          url: repo.url + "/commits",
+          responseType:'stream',
+          headers: {'Authorization': vm.token }
+        })
+          .then(function(response) {
+            response.data.forEach((commit) => {
+              vm.dateCommit = new Date(commit.commit.author.date)
+              if(vm.dateCommit >= vm.dateBegin && vm.dateCommit <= vm.dateEnd){
+                vm.commits.push(commit);
+              }
+            })
+          })
+      })
+    },
   },
 };
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 </style>
