@@ -1,19 +1,19 @@
 <template>
   <div>
-    <nav class="navbar sticky-top navbar-light bg-light justify-content-between">
+    <nav class="navbar sticky-top navbar-light bg-light">
       <a class="navbar-brand">Github vue</a>
-      <form>
-        <datepicker placeholder="Date début" v-model="dateBegin" :format="formatDate"></datepicker>
-        <datepicker placeholder="Date fin" v-model="dateEnd" :format="formatDate" ></datepicker>
+      <form style="display:inherit;">
+        <datepicker class="myDatepicker" placeholder="Date début" v-model="dateBegin" :format="formatDate"></datepicker>
+        <datepicker class="myDatepicker" placeholder="Date fin" v-model="dateEnd" :format="formatDate" ></datepicker>
         <multiselect v-model="selectedRepos" 
-                      :options="repoItems" 
+                      :options="users" 
                       :multiple="true" 
                       :close-on-select="false"
                       :clear-on-select="false" 
                       :preserve-search="true"
                       placeholder="Selectionner repertoire" 
-                      label="full_name" 
-                      track-by="full_name" 
+                      label="" 
+                      track-by="" 
                       :preselect-first="true">   
         <template slot="selection" slot-scope="{ values, search, isOpen }"><span class="multiselect__single"
           v-if="values.length &amp;&amp; !isOpen">{{ values.length }} options selected</span>
@@ -26,13 +26,26 @@
     <div>
       <div class="container" style="padding-top: 10px;">
         <h1 style="padding-top: 50px;">Liste des commits</h1>
-        <div>
-            <div class="card" v-for="selectedRepo in selectedRepos">
-              <div class="card-body" style="padding-top: 10px;">
-                    <h5 class="card-title">{{selectedRepo.owner.login}}</h5>
-                    <h6 class="card-subtitle mb-2 text-muted">{{selectedRepo.name}}</h6>
-                    <p class="card-text" v-for="commit in commits">{{commit.commit.message}} - ({{formatDate(commit.commit.author.date)}})</p>
-                </div>
+          <div>
+            <div v-for="repoTD in reposToDisplay" style="padding-top:10px">
+              <h3>{{repoTD.author}}</h3>
+              <table class="w-100">
+                <thead>
+                  <tr class="flex ">
+                    <th scope="col">commit message</th>
+                    <th scope="col">author</th>
+                    <th scope="col">date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="commit in repoTD.commits">
+                      <td class="w-50">• {{commit.message}}</td>
+                      <td>{{repoTD.author}}</td>
+                      <td>{{formatDisplayDate(commit.date)}}</td>
+                    </tr>
+                </tbody>
+              </table>
+              <hr/>
             </div>
           </div>
       </div>
@@ -63,10 +76,13 @@ export default {
     return {
       repoItems: [],
       selectedRepos: [],
+      users: [],
 
       dateBegin:'',
       dateEnd:'',
       dateCommit:'',
+
+      reposToDisplay: [],
 
       commits: [],
 
@@ -227,37 +243,50 @@ export default {
         .then(function(response) {
           response.data.items.map(function(value, key) {
             vm.repoItems.push(value);
+            vm.users.push(value.owner.login)
           });
-          // console.log(vm.repoItems);
+          console.log(vm.users);
         })
     },
     formatDate(date) {
-        return moment(date).format('YYYY-MM-D à h:mm:ss');
+        return moment(date).format('DD-MM-YYYY');
+    },
+    formatDisplayDate(date) {
+        return moment(date).format('DD-MM-YYYY à hh:mm:ss');
     },
     getCommitsForSelectedRepos(){
       var vm = this;
-
+      vm.reposToDisplay = [];
       vm.selectedRepos.forEach((repo) => {
-        vm.commits = []
+        var commits = []
+        var repos = new Object();
         axios({
           method:'get',
-          url: repo.url + "/commits",
+          url: 'https://api.github.com/repos/'+repo+'/github-ynov-vue/commits',
           responseType:'stream',
-          headers: {'Authorization': vm.token }
+          headers: {'Authorization': vm.token}
         })
           .then(function(response) {
             response.data.forEach((commit) => {
               vm.dateCommit = new Date(commit.commit.author.date)
               if(vm.dateCommit >= vm.dateBegin && vm.dateCommit <= vm.dateEnd){
-                vm.commits.push(commit);
+                repos.author = commit.commit.author.name;
+                var repoCommit = new Object();
+                repoCommit.message = commit.commit.message;
+                repoCommit.date = commit.commit.author.date;
+                commits.push(repoCommit);
               }
             })
           })
+          repos.commits = commits
+          vm.reposToDisplay.push(repos);
       })
+      console.log(vm.reposToDisplay);
     },
   },
 };
 </script>
 
 <style scoped>
+
 </style>
