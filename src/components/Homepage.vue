@@ -3,17 +3,17 @@
     <nav class="navbar sticky-top navbar-light bg-light">
       <a class="navbar-brand">Github vue</a>
       <form style="display:inherit;">
-        <datepicker class="myDatepicker" placeholder="Date début" v-model="dateBegin" :format="formatDate"></datepicker>
-        <datepicker class="myDatepicker" placeholder="Date fin" v-model="dateEnd" :format="formatDate" ></datepicker>
-        <multiselect v-model="selectedRepos" 
-                      :options="users" 
+        <datepicker placeholder="Date début" v-model="dateBegin" :format="formatDate"></datepicker>
+        <datepicker placeholder="Date fin" v-model="dateEnd" :format="formatDate" ></datepicker>
+        <multiselect v-model="selectedUsers" 
+                      :options="repoItems" 
                       :multiple="true" 
                       :close-on-select="false"
                       :clear-on-select="false" 
                       :preserve-search="true"
                       placeholder="Selectionner repertoire" 
-                      label="" 
-                      track-by="" 
+                      label="full_name" 
+                      track-by="full_name" 
                       :preselect-first="true">   
         <template slot="selection" slot-scope="{ values, search, isOpen }"><span class="multiselect__single"
           v-if="values.length &amp;&amp; !isOpen">{{ values.length }} options selected</span>
@@ -25,10 +25,17 @@
 
     <div>
       <div class="container" style="padding-top: 10px;">
+        <!-- <p v-for="repoIt in repoItems">{{repoIt}}</p> -->
+        
         <h1 style="padding-top: 50px;">Liste des commits</h1>
           <div>
             <div v-for="repoTD in reposToDisplay" style="padding-top:10px">
-              <h3>{{repoTD.author}}</h3>
+              <div class="d-flex">
+                <img :src=repoTD.avatar alt="" style="height:25px; weight:25px; padding-right: 20px;">
+                <h3 class="text-secondary w-50">{{repoTD.author}} ({{repoTD.login}})</h3>
+              </div>
+              <h6 class="text-secondary">projet : {{repoTD.full_name}}</h6>
+              <p>{{repoTD.readme}}</p>
               <table class="w-100">
                 <thead>
                   <tr class="flex ">
@@ -60,7 +67,7 @@ import axios from 'axios';
 import Multiselect from 'vue-multiselect';
 import Datepicker from 'vuejs-datepicker';
 import moment from 'moment';
-import Vue2Filters from 'vue2-filters'
+import Vue2Filters from 'vue2-filters';
 
 export default {
   name: "Homepage",
@@ -75,12 +82,14 @@ export default {
   data() {
     return {
       repoItems: [],
-      selectedRepos: [],
+      selectedUsers: [],
       users: [],
 
       dateBegin:'',
       dateEnd:'',
       dateCommit:'',
+
+      readme: '',
 
       reposToDisplay: [],
 
@@ -245,7 +254,7 @@ export default {
             vm.repoItems.push(value);
             vm.users.push(value.owner.login)
           });
-          console.log(vm.users);
+          console.log(vm.repoItems);
         })
     },
     formatDate(date) {
@@ -254,15 +263,22 @@ export default {
     formatDisplayDate(date) {
         return moment(date).format('DD-MM-YYYY à hh:mm:ss');
     },
+    displayUsers() {
+
+    },
     getCommitsForSelectedRepos(){
       var vm = this;
       vm.reposToDisplay = [];
-      vm.selectedRepos.forEach((repo) => {
+      vm.selectedUsers.forEach((repo) => {
         var commits = []
         var repos = new Object();
+        repos.login = repo.owner.login;
+        repos.full_name = repo.full_name;
+        repos.avatar = repo.owner.avatar_url;
+        repos.readme = vm.getReadmes(repo);
         axios({
           method:'get',
-          url: 'https://api.github.com/repos/'+repo+'/github-ynov-vue/commits',
+          url: 'https://api.github.com/repos/'+repo.full_name+'/commits',
           responseType:'stream',
           headers: {'Authorization': vm.token}
         })
@@ -283,6 +299,31 @@ export default {
       })
       console.log(vm.reposToDisplay);
     },
+    getReadmes(repo){
+      axios
+        .get(
+          "https://api.github.com/repos/" +
+            repo.owner.login +
+            "/" +
+            repo.name +
+            "/readme"
+        )
+          .then(r => {
+            this.readme = this.b64DecodeUnicode(r.data.content).replace(
+              /(?:\r\n|\r|\n)/g,
+              "</br>"
+            );
+          });
+    },
+    b64DecodeUnicode: str => {
+      return decodeURIComponent(
+        Array.prototype.map
+          .call(atob(str), function(c) {
+            return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+          })
+          .join("")
+      );
+    }
   },
 };
 </script>
