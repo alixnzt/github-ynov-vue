@@ -12,7 +12,7 @@
                       :clear-on-select="false" 
                       :preserve-search="true"
                       placeholder="Selectionner repertoire" 
-                      label="full_name" 
+                      label="full_name"
                       track-by="full_name" 
                       :preselect-first="true">   
         <template slot="selection" slot-scope="{ values, search, isOpen }"><span class="multiselect__single"
@@ -25,17 +25,16 @@
 
     <div>
       <div class="container" style="padding-top: 10px;">
-        <!-- <p v-for="repoIt in repoItems">{{repoIt}}</p> -->
-        
         <h1 style="padding-top: 50px;">Liste des commits</h1>
           <div>
-            <div v-for="repoTD in reposToDisplay" style="padding-top:10px">
+            <div v-for="(repoTD,index) in reposToDisplay" :key="index" style="padding-top:10px">
               <div class="d-flex">
                 <img :src=repoTD.avatar alt="" style="height:25px; weight:25px; padding-right: 20px;">
                 <h3 class="text-secondary w-50">{{repoTD.author}} ({{repoTD.login}})</h3>
               </div>
               <h6 class="text-secondary">projet : {{repoTD.full_name}}</h6>
-              <p>{{repoTD.readme}}</p>
+              <!-- <div v-html="repoTD.readme"></div> -->
+              <vue-markdown v-html="repoTD.readme"></vue-markdown>
               <table class="w-100">
                 <thead>
                   <tr class="flex ">
@@ -45,7 +44,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="commit in repoTD.commits">
+                    <tr v-for="(commit, index) in repoTD.commits" :key="index">
                       <td class="w-50">• {{commit.message}}</td>
                       <td>{{repoTD.author}}</td>
                       <td>{{formatDisplayDate(commit.date)}}</td>
@@ -68,13 +67,14 @@ import Multiselect from 'vue-multiselect';
 import Datepicker from 'vuejs-datepicker';
 import moment from 'moment';
 import Vue2Filters from 'vue2-filters';
+import VueMarkdown from 'vue-markdown';
 
 export default {
   name: "Homepage",
   components: {
     Multiselect,
     Datepicker,
-    Vue2Filters,
+    VueMarkdown,
   },
   props: {
     token : `token d3db3b8367c18ddac1d3f72c31a80fc37d6c31de`,
@@ -89,7 +89,7 @@ export default {
       dateEnd:'',
       dateCommit:'',
 
-      readme: '',
+      readme:'',
 
       reposToDisplay: [],
 
@@ -254,7 +254,7 @@ export default {
             vm.repoItems.push(value);
             vm.users.push(value.owner.login)
           });
-          console.log(vm.repoItems);
+          // console.log(vm.repoItems);
         })
     },
     formatDate(date) {
@@ -263,8 +263,8 @@ export default {
     formatDisplayDate(date) {
         return moment(date).format('DD-MM-YYYY à hh:mm:ss');
     },
-    displayUsers() {
-
+    displayUsers(repoFullName) {
+        return repoFullName.split('/')[0]
     },
     getCommitsForSelectedRepos(){
       var vm = this;
@@ -275,7 +275,9 @@ export default {
         repos.login = repo.owner.login;
         repos.full_name = repo.full_name;
         repos.avatar = repo.owner.avatar_url;
-        repos.readme = vm.getReadmes(repo);
+        vm.getReadmes(repo, repos);
+        console.log(repos)
+        //console.log(repos.readme);
         axios({
           method:'get',
           url: 'https://api.github.com/repos/'+repo.full_name+'/commits',
@@ -296,23 +298,16 @@ export default {
           })
           repos.commits = commits
           vm.reposToDisplay.push(repos);
+          console.log(vm.reposToDisplay);
       })
-      console.log(vm.reposToDisplay);
     },
-    getReadmes(repo){
+    getReadmes(repo,repertoireCible){
       axios
         .get(
-          "https://api.github.com/repos/" +
-            repo.owner.login +
-            "/" +
-            repo.name +
-            "/readme"
+          "https://api.github.com/repos/"+repo.full_name+"/readme"
         )
-          .then(r => {
-            this.readme = this.b64DecodeUnicode(r.data.content).replace(
-              /(?:\r\n|\r|\n)/g,
-              "</br>"
-            );
+          .then( (response) => {
+            repertoireCible.readme = this.b64DecodeUnicode(response.data.content).replace(/(?:\r\n|\r|\n)/g,"</br>")
           });
     },
     b64DecodeUnicode: str => {

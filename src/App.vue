@@ -5,12 +5,14 @@
 </template>
 
 <script>
-import Homepage from './components/Homepage.vue'
+import Homepage from './components/Homepage.vue';
+import VueMarkdown from 'vue-markdown';
 
 export default {
   name: 'app',
   components: {
-    Homepage
+    Homepage,
+    VueMarkdown
   }
 }
 </script>
