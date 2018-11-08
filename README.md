@@ -1,5 +1,13 @@
 # github-ynov-vue
 
+### Project
+Retrieves commits and readmes for a specified repository name
+
+### Link to the app
+https://app-github-ynov-vue.herokuapp.com/
+
+
+
 ## Project setup
 ```
 npm install
