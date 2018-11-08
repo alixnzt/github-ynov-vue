@@ -2,7 +2,7 @@
   <div>
     <nav class="navbar sticky-top navbar-light bg-light">
       <a class="navbar-brand">Github vue</a>
-      <form style="display:inherit;">
+      <form style="display:flex; flex-direction:column">
         <datepicker placeholder="Date début" v-model="dateBegin" :format="formatDate"></datepicker>
         <datepicker placeholder="Date fin" v-model="dateEnd" :format="formatDate" ></datepicker>
         <multiselect v-model="selectedUsers" 
@@ -34,7 +34,7 @@
               </div>
               <h6 class="text-secondary">projet : {{repoTD.full_name}}</h6>
               <!-- <div v-html="repoTD.readme"></div> -->
-              <vue-markdown v-html="repoTD.readme"></vue-markdown>
+              <vue-markdown class="container" style="background-color:#F0F0F0;" v-html="repoTD.readme"></vue-markdown>
               <table class="w-100">
                 <thead>
                   <tr class="flex ">
